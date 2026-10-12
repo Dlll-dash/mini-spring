@@ -25,18 +25,27 @@ public class MiniContext {
 
     private final List<String>beanDefinitionNames=new ArrayList<>(256);
 
+    private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<>(256);
+
     private final String basePackages;
 
     public MiniContext(String basePackage){this.basePackages=basePackage;}
 
     public String[] getBeanDefinitionNames(){return beanDefinitionNames.toArray(new String[0]);}
 
+    /**
+     * 创建bean
+     * @param beanName
+     * @param beanType
+     * @return
+     * @param <T>
+     */
     private <T> T createBean(String beanName,Class<T> beanType){
         try {
-            System.out.println(">>>Create Bean: "+beanName);
+            //System.out.println(">>>Create Bean: "+beanName);
 
             T obj = (T)beanType.getDeclaredConstructor().newInstance();
-            //先存入二级缓存，解决循环依赖
+
 
             earlySingletonObjects.putIfAbsent(beanName, obj);
 
@@ -52,11 +61,13 @@ public class MiniContext {
                     }
                 }
             }
-            //从二级缓存拿出来
+            obj=applyBeanPostProcessorsAfterInitialization(obj,beanName);
+            //存入一级缓存时并检查是否已存在bean
             Object oldObject = singletonObjects.putIfAbsent(beanName,obj);
             if(oldObject!=null){
                 throw new BeanAlreadyExistsException("there is already object "+beanName);
             }
+            //移出二级缓存
             earlySingletonObjects.remove(beanName);
 
             return obj;
@@ -65,6 +76,27 @@ public class MiniContext {
         }
     }
 
+    /**
+     * 调用后置处理器的初始后方法
+     * @param obj
+     * @param beanName
+     * @return
+     * @param <T>
+     */
+    private <T> T applyBeanPostProcessorsAfterInitialization(T obj, String beanName) {
+        //遍历处理器
+        for(BeanPostProcessor pp:beanPostProcessors){
+            obj =(T)pp.postProcessAfterInitialization(obj,beanName);
+        }
+        return obj;
+    }
+
+    /**
+     * 通过bean名称获得实例 O(1)查询，没查到就新建
+     * @param beanName
+     * @return
+     * @param <T>
+     */
     public <T> T getBean(String beanName){
         //先查一级缓存
         Object cached=singletonObjects.get(beanName);
@@ -84,6 +116,12 @@ public class MiniContext {
         return (T)createBean(beanName,bd.getBeanType());
     }
 
+    /**
+     * 通过类型获得bean实例 有O(N)的代价
+     * @param type
+     * @return
+     * @param <T>
+     */
     public <T> T getBean(Class<T> type){
 
         for(BeanDefinition bd:beanDefinitions.values()){
@@ -100,23 +138,46 @@ public class MiniContext {
     public void refresh(){
         //扫包
         scan(basePackages);
+
 //        obtainFreshBeanFactory();
 //
 //        postProcessBeanFactory();
 //
 //        invokeBeanFactoryPostProcessors();
-//
-//        registerBeanPostProcessors();
-//
+
+        //注册BPP
+        registerBeanPostProcessors();
+
 //        onRefresh();
 //
-//        finishBeanFactoryInitialization();
+        finishBeanFactoryInitialization();
+    }
+
+    /**
+     * 注册后置处理器
+     */
+    private void registerBeanPostProcessors(){
+        //使用beanName遍历，因为bDNs是扫包得到的集合（确定但无语义），方便问题溯源
+        for(String name:beanDefinitionNames){
+            Class<?> type=beanDefinitions.get(name).getBeanType();
+            if(BeanPostProcessor.class.isAssignableFrom(type)){
+                //使用beanName查询 O(1)
+                beanPostProcessors.add(getBean(name));
+            }
+        }
+    }
+
+    private void finishBeanFactoryInitialization() {
         //预实例化
         for(String beanName:beanDefinitionNames){
             getBean(beanName);
         }
     }
 
+    /**
+     * 扫包
+     * @param basePackage 根扫描包
+     */
     void scan(String basePackage){
         String path=basePackage.replace('.','/');
         try {
@@ -142,6 +203,12 @@ public class MiniContext {
 
     }
 
+    /**
+     * 递归扫包
+     * @param dir
+     * @param packageName
+     * @throws ClassNotFoundException
+     */
     private void walk(File dir, String packageName) throws ClassNotFoundException {
         File[] files=dir.listFiles();
         if(files==null)return;
