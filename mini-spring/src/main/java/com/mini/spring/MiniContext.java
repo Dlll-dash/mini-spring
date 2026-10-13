@@ -66,6 +66,7 @@ public class MiniContext {
             }
 
             //如果已经有代理则不会生效
+            obj=applyBeanPostProcessorsBeforeInitialization(obj,beanName);
             obj=applyBeanPostProcessorsAfterInitialization(obj,beanName);
 
             //判断二级是否已有代理，有就替换。解决的是循环依赖中代理的一致性问题
@@ -88,6 +89,13 @@ public class MiniContext {
         }catch(InvocationTargetException | NoSuchMethodException | InstantiationException | IllegalAccessException e){
             throw new RuntimeException(e);
         }
+    }
+
+    private <T> T applyBeanPostProcessorsBeforeInitialization(T obj, String beanName) {
+        for(BeanPostProcessor pp:beanPostProcessors){
+            obj =(T)pp.postProcessBeforeInitialization(obj,beanName);
+        }
+        return obj;
     }
 
     /**
@@ -162,7 +170,6 @@ public class MiniContext {
     public void refresh(){
         //扫包
         scan(basePackages);
-
 //        obtainFreshBeanFactory();
 //
 //        postProcessBeanFactory();
@@ -170,6 +177,7 @@ public class MiniContext {
 //        invokeBeanFactoryPostProcessors();
 
         //注册BPP
+        registerFrameworkBeanPostProcessor();
         registerBeanPostProcessors();
 
 //        onRefresh();
@@ -256,10 +264,27 @@ public class MiniContext {
         }
     }
 
+    /**
+     * 获取代理
+     * @param bean
+     * @param beanName
+     * @return
+     */
     private Object getEarlyBeanReference(Object bean,String beanName){
         for(BeanPostProcessor pp:beanPostProcessors){
             bean = pp.getEarlyBeanReference(bean,beanName);
         }
         return bean;
+    }
+
+    /**
+     * 注册框架内的BPP
+     */
+    private void registerFrameworkBeanPostProcessor(){
+        String name="initAnnotationBeanPostProcessor";
+        beanDefinitions.put(name,new BeanDefinition(name, InitAnnotationBeanPostProcessor.class));
+        beanDefinitionNames.add(name);
+        //...
+
     }
 }

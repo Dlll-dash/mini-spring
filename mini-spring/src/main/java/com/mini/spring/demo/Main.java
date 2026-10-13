@@ -13,11 +13,11 @@ public class Main {
         var ctx = new MiniContext("com.mini.spring.demo");
         ctx.refresh();
 
-        System.out.println("---①：扫描结果---");
+        System.out.println("---①：配方名单---");
         System.out.println(Arrays.toString(ctx.getBeanDefinitionNames()));
 
-        System.out.println("---②：拿一个注入好的 bean---");
+        System.out.println("---②：测试循环依赖注入bean---");
         System.out.println(ctx.getBean(OrderService.class).orderOf(42)+"\n"+ctx.getBean(UserRepository.class).orderOf(21));
-        System.out.println(ctx.getBean(OrderService.class) == ctx.getBean(OrderService.class));
+
     }
 }

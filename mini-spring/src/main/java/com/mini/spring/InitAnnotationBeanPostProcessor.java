@@ -1,0 +1,23 @@
+package com.mini.spring;
+
+import com.mini.spring.annotation.Component;
+import com.mini.spring.annotation.PostConstruct;
+
+import java.lang.reflect.Method;
+
+public class InitAnnotationBeanPostProcessor implements BeanPostProcessor{
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) {
+        for(Method m:bean.getClass().getDeclaredMethods()){
+            if(m.isAnnotationPresent(PostConstruct.class)){
+                try{
+                    m.setAccessible(true);
+                    m.invoke(bean);
+                }catch (Exception e){
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return bean;
+    }
+}
