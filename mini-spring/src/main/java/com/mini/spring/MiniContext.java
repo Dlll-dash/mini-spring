@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MiniContext {
     private final Map<String,BeanDefinition> beanDefinitions = new ConcurrentHashMap<>(256);
 
+    private final Map<String,ObjectFactory<?>>singletonFactories= new ConcurrentHashMap<>(256);
+
     private final Map<String,Object>earlySingletonObjects = new ConcurrentHashMap<>(256);
 
     private final Map<String,Object>singletonObjects=new ConcurrentHashMap<>(256);
@@ -45,9 +47,10 @@ public class MiniContext {
             //System.out.println(">>>Create Bean: "+beanName);
 
             T obj = (T)beanType.getDeclaredConstructor().newInstance();
+            T finalObj = obj;
 
-
-            earlySingletonObjects.putIfAbsent(beanName, obj);
+            //lambda 实现ObjectFactory接口，重载getObject方法：返回经过PostProcessors处理过的代理
+            singletonFactories.put(beanName,()-> getEarlyBeanReference(finalObj,beanName));
 
             for(Field f: beanType.getDeclaredFields()){
                 //拿到被@Autowired注解的属性列表
@@ -61,17 +64,28 @@ public class MiniContext {
                     }
                 }
             }
+
+            //如果已经有代理则不会生效
             obj=applyBeanPostProcessorsAfterInitialization(obj,beanName);
+
+            //判断二级是否已有代理，有就替换。解决的是循环依赖中代理的一致性问题
+            Object earlySingleton=earlySingletonObjects.get(beanName);
+            if(earlySingleton!=null && obj==finalObj){
+                obj=(T)earlySingleton;
+            }
+
             //存入一级缓存时并检查是否已存在bean
             Object oldObject = singletonObjects.putIfAbsent(beanName,obj);
             if(oldObject!=null){
                 throw new BeanAlreadyExistsException("there is already object "+beanName);
             }
+            //移出三级缓存
+            singletonFactories.remove(beanName);
             //移出二级缓存
             earlySingletonObjects.remove(beanName);
 
             return obj;
-        }catch(InstantiationException | IllegalAccessException | InvocationTargetException| NoSuchMethodException e){
+        }catch(InvocationTargetException | NoSuchMethodException | InstantiationException | IllegalAccessException e){
             throw new RuntimeException(e);
         }
     }
@@ -108,6 +122,16 @@ public class MiniContext {
         if(earlyCached!=null){
             return (T)earlyCached;
         }
+        //三级缓存
+        ObjectFactory<?> f=singletonFactories.get(beanName);
+        if(f!=null){
+            Object earlyBean = f.getObject();
+            if(singletonFactories.remove(beanName)!=null){
+                earlySingletonObjects.put(beanName,earlyBean);
+                return (T)earlyBean;
+            }
+        }
+
         //拿配方新造一个
         BeanDefinition bd=beanDefinitions.get(beanName);
         if(bd==null){
@@ -178,7 +202,7 @@ public class MiniContext {
      * 扫包
      * @param basePackage 根扫描包
      */
-    void scan(String basePackage){
+    private void scan(String basePackage){
         String path=basePackage.replace('.','/');
         try {
             Enumeration<URL> urls = Thread.currentThread().getContextClassLoader().getResources(path);
@@ -230,5 +254,12 @@ public class MiniContext {
                 }
             }
         }
+    }
+
+    private Object getEarlyBeanReference(Object bean,String beanName){
+        for(BeanPostProcessor pp:beanPostProcessors){
+            bean = pp.getEarlyBeanReference(bean,beanName);
+        }
+        return bean;
     }
 }

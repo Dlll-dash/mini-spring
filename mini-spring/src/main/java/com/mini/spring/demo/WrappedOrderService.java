@@ -10,6 +10,6 @@ public class WrappedOrderService extends OrderService{
 
     @Override
     public String orderOf(long userId) {
-        return "Wrapped>>"+target.orderOf(userId);
+        return "Wrapped@"+System.identityHashCode(this)+">>"+target.orderOf(userId);
     }
 }

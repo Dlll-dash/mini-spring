@@ -1,15 +1,18 @@
 package com.mini.spring.demo;
 
-import com.mini.spring.BeanPostProcessor;
 import com.mini.spring.annotation.Component;
+import com.mini.spring.aop.AbstractAutoProxyCreator;
 
 @Component
-public class OrderProcessor implements BeanPostProcessor {
+public class OrderProcessor extends AbstractAutoProxyCreator {
+
     @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) {
-        if(beanName.equals("orderService")){
-            return new WrappedOrderService((OrderService) bean);
-        }
-        return bean;
+    protected boolean shouldWrap(String beanName) {
+        return beanName.equals("orderService");
+    }
+
+    @Override
+    protected Object createProxy(Object bean, String beanName) {
+        return new WrappedOrderService((OrderService) bean);
     }
 }
