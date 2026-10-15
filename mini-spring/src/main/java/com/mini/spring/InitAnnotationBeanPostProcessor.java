@@ -5,6 +5,9 @@ import com.mini.spring.annotation.PostConstruct;
 
 import java.lang.reflect.Method;
 
+/**
+ * @PostConstruct 注解方法执行的后置处理器
+ */
 public class InitAnnotationBeanPostProcessor implements BeanPostProcessor{
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) {

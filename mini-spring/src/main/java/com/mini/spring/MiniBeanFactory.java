@@ -119,7 +119,7 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     /**
      * 通过bean名称获得实例 O(1)查询，没查到就新建
      * @param beanName
-     * @return
+     * @return T
      * @param <T>
      */
     public <T> T getBean(String beanName){

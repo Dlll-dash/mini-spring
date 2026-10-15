@@ -6,5 +6,6 @@ public interface BeanDefinitionRegistry {
 
     BeanDefinition getBeanDefinition(String name);
 
+    String[] getBeanDefinitionNames();
 
 }

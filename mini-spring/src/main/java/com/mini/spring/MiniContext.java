@@ -1,13 +1,6 @@
 package com.mini.spring;
 
-import com.mini.spring.annotation.Component;
-
-
 import java.beans.Introspector;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.*;
 
 
@@ -15,15 +8,32 @@ public class MiniContext {
 
     private final MiniBeanFactory factory = new MiniBeanFactory();
 
-    private final String basePackages;
+    /**
+     * 初始化容器
+     * @param configClass 运行主类
+     */
+    public MiniContext(Class<?> configClass){
+        //注册包所在位置
+        register(configClass);
+        //注册框架工厂后置处理器
+        registerFrameworkBeanFactoryPostProcessor();
 
-    public MiniContext(String basePackage){this.basePackages=basePackage;}
+        refresh();
+    }
 
+    /**
+     * 注册根包路径
+     * @param configClass
+     */
+    private void register(Class<?> configClass){
+        String name= Introspector.decapitalize(configClass.getSimpleName());
+        factory.registerBeanDefinition(name,new BeanDefinition(name, configClass));
+    }
 
-
+    /**
+     * 运行方法
+     */
     public void refresh(){
-        //扫包
-        scan(basePackages);
 //        obtainFreshBeanFactory();
 //
 //        postProcessBeanFactory();
@@ -39,7 +49,18 @@ public class MiniContext {
         finishBeanFactoryInitialization();
     }
 
+    /**
+     * 调用工厂后置处理器
+     */
     private void invokeBeanFactoryPostProcessors() {
+        for(String beanName:factory.getBeanDefinitionNames()){
+            //在调用BFPP之前，不能实例化任何Bean
+            BeanDefinition bd = factory.getBeanDefinition(beanName);
+            if(BeanFactoryPostProcessor.class.isAssignableFrom(bd.getBeanType())) {
+                Object bean=factory.getBean(beanName);
+                ((BeanFactoryPostProcessor)bean).postProcessBeanFactory(factory);
+            }
+        }
     }
 
     /**
@@ -66,77 +87,45 @@ public class MiniContext {
      * 注册框架内的BPP
      */
     private void registerFrameworkBeanPostProcessor(){
-        String name="initAnnotationBeanPostProcessor";
-        factory.registerBeanDefinition(name,new BeanDefinition(name, InitAnnotationBeanPostProcessor.class));
+        String INIT_ANNOTATION="initAnnotationBeanPostProcessor";
+        factory.registerBeanDefinition(INIT_ANNOTATION,new BeanDefinition(INIT_ANNOTATION, InitAnnotationBeanPostProcessor.class));
         //...
 
     }
 
     /**
-     * 扫包
-     * @param basePackage 根扫描包
+     * 注册框架内的BFPP
      */
-    private void scan(String basePackage){
-        String path=basePackage.replace('.','/');
-        try {
-            Enumeration<URL> urls = Thread.currentThread().getContextClassLoader().getResources(path);
-            if(!urls.hasMoreElements()){
-                throw new IllegalStateException("Cannot find resources");
-            }
-            while(urls.hasMoreElements()){
-                URL url=urls.nextElement();
-                if(!url.getProtocol().equals("file"))continue;
-                try {
-                    //递归处理
-                    walk(this.factory,new File(url.toURI()), basePackage);
-                } catch (ClassNotFoundException e) {
-                    throw new RuntimeException(e);
-                } catch (URISyntaxException e){
-                    throw new RuntimeException("URL Syntax Error");
-                }
-            }
-        }catch (IOException e){
-            throw new RuntimeException(e);
-        }
-
+    private void registerFrameworkBeanFactoryPostProcessor(){
+        String CONFIGURATION_CLASS="configurationClassPostProcessor";
+        factory.registerBeanDefinition(CONFIGURATION_CLASS,new BeanDefinition(CONFIGURATION_CLASS,ConfigurationClassProcessor.class));
+        //...
     }
 
     /**
-     * 递归扫包
-     * @param dir
-     * @param packageName
-     * @throws ClassNotFoundException
+     * 暴露给外面的接口代理
+     * @param name
+     * @return
+     * @param <T>
      */
-    private void walk(BeanDefinitionRegistry registry,File dir, String packageName) throws ClassNotFoundException {
-        File[] files=dir.listFiles();
-        if(files==null)return;
-        Arrays.sort(files);
-        for(File f : files){
-            String newPackageName=packageName+"."+f.getName();
-            if(f.isDirectory()){
-                walk(registry,f,newPackageName);
-            }else if(f.getName().endsWith(".class")){
-                String className=newPackageName.replace(".class","");
-                //这里在扫描时就加载类，而spring不会在扫描时加载,spring只会加载注解元数据
-                //目前只是mini版，没有依赖，扫描时加载不会导致崩掉
-                Class<?> c=Class.forName(className);
-                if(c.isAnnotationPresent(Component.class)){
-                    //注册(暂时)
-                    String beanName= Introspector.decapitalize(f.getName().replace(".class",""));
-                    registry.registerBeanDefinition(beanName,new BeanDefinition(beanName,c));
-                }
-            }
-        }
-    }
-
     public <T> T getBean(String name){
         return factory.getBean(name);
     }
 
+    /**
+     * 暴露给外面的接口代理
+     * @param type
+     * @return
+     * @param <T>
+     */
     public <T> T getBean(Class<T> type){
         return factory.getBean(type);
     }
 
+    /**
+     * 暴露给外面的接口代理
+     * @return
+     */
     public String[] getBeanDefinitionNames(){
         return factory.getBeanDefinitionNames();
     }

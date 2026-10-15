@@ -1,17 +1,15 @@
 package com.mini.spring.demo;
 
 import com.mini.spring.MiniContext;
+import com.mini.spring.annotation.ComponentScan;
 
 import java.util.Arrays;
 
-/**
- * 这就是验收标准，别改。今天只要上面那段打印出来就算过 —— 下面那段【故意会炸】。
- */
+@ComponentScan({"com.mini.spring.exception","com.mini.spring.demo"})
 public class Main {
 
     public static void main(String[] args) {
-        var ctx = new MiniContext("com.mini.spring.demo");
-        ctx.refresh();
+        var ctx = new MiniContext(Main.class);
 
         System.out.println("---①：配方名单---");
         System.out.println(Arrays.toString(ctx.getBeanDefinitionNames()));
