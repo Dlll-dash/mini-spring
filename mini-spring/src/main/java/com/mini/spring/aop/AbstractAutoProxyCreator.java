@@ -24,7 +24,7 @@ public abstract class AbstractAutoProxyCreator implements BeanPostProcessor {
     }
 
     private Object wrapIfNecessary(Object bean, String beanName){
-        if(shouldWrap(beanName)){
+        if(shouldWrap(bean.getClass(),beanName)){
             return createProxy(bean,beanName);
         }
         return bean;
@@ -35,7 +35,7 @@ public abstract class AbstractAutoProxyCreator implements BeanPostProcessor {
      * @param beanName
      * @return
      */
-    protected abstract boolean shouldWrap(String beanName);
+    protected abstract boolean shouldWrap(Class<?>beanClass,String beanName);
 
     /**
      * 子类重载决定怎么代理

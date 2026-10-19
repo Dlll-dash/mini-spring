@@ -3,6 +3,7 @@ package com.mini.spring;
 import com.mini.spring.annotation.Autowired;
 import com.mini.spring.exception.BeanAlreadyExistsException;
 import com.mini.spring.exception.NoSuchBeanDefinitionException;
+import com.mini.spring.exception.NoUniqueBeanDefinitionException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -158,16 +159,22 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
      * @param <T>
      */
     public <T> T getBean(Class<T> type){
-
+        String matchedName=null;
         for(BeanDefinition bd:beanDefinitions.values()){
             Class<?> beanType=bd.getBeanType();
-            if(beanType==type){
-                String beanName=bd.getBeanName();
-                return (T) getBean(beanName);
+            if(type.isAssignableFrom(beanType)){
+                if(matchedName!=null){
+                    throw new NoUniqueBeanDefinitionException(
+                            "expected single matching bean but found more than one: "
+                                    + matchedName + ", " + bd.getBeanName());
+                }
+                matchedName=bd.getBeanName();
             }
         }
-
-        throw new NoSuchBeanDefinitionException("BeanDefinition Not Found");
+        if(matchedName==null){
+            throw new NoSuchBeanDefinitionException("BeanDefinition Not Found");
+        }
+        return (T) getBean(matchedName);
     }
 
     /**

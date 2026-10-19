@@ -2,22 +2,30 @@ package com.mini.spring;
 
 import com.mini.spring.annotation.Component;
 import com.mini.spring.annotation.ComponentScan;
+import com.mini.spring.annotation.Import;
 
 import java.beans.Introspector;
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Enumeration;
+import java.util.*;
 
 public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
+    /**
+     * 扫包，初始化BeanFactory
+     * @param registry
+     */
     @Override
     public void postProcessBeanFactory(BeanDefinitionRegistry registry) {
         for(String name:registry.getBeanDefinitionNames()){
             BeanDefinition bd=registry.getBeanDefinition(name);
             ComponentScan componentScan=bd.getBeanType().getAnnotation(ComponentScan.class);
+            Set<Class<?>> imports=new LinkedHashSet<>();
+
             if(componentScan!=null){
                 String[] basePackages=componentScan.value();
                 if(basePackages.length==0){
@@ -27,6 +35,27 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
                     //扫描注解标明的所有包
                     for(String basePackage:basePackages){
                         scan(registry,basePackage);
+                    }
+                }
+            }
+
+            //收集Import导入类
+            collectImports(bd.getBeanType(),imports,new HashSet<>());
+            if(imports.size()>0){
+                for(Class<?> cls:imports){
+                    if(ImportBeanDefinitionRegistrar.class.isAssignableFrom(cls)){
+                        try {
+                            ImportBeanDefinitionRegistrar imp = (ImportBeanDefinitionRegistrar) cls.getDeclaredConstructor().newInstance();
+                            imp.registerBeanDefinition(cls,registry);
+                        }catch (NoSuchMethodException e){
+                            throw new RuntimeException(e);
+                        } catch (InvocationTargetException e) {
+                            throw new RuntimeException(e);
+                        } catch (InstantiationException e) {
+                            throw new RuntimeException(e);
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             }
@@ -91,4 +120,28 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
             }
         }
     }
+
+    private void collectImports(Class<?> cls,Set<Class<?>>imports,Set<Class<?>> visited){
+        if(visited.contains(cls)){
+            return;
+        }
+        Annotation[] annotations = cls.getAnnotations();
+        visited.add(cls);
+        Import imp=cls.getAnnotation(Import.class);
+
+        //递归元注解
+        for(Annotation ann : annotations){
+            if(ann.annotationType()!=Import.class) {
+                collectImports(ann.annotationType(), imports, visited);
+            }
+        }
+
+        //加入集合
+        if(imp!=null){
+            Class<?>[]classes=imp.value();
+            imports.addAll(List.of(classes));
+        }
+
+    }
+
 }
