@@ -68,7 +68,10 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
                     }
                 }
             }
-
+            //注入完成通知aware
+            if(obj instanceof BeanFactoryAware aware){
+                aware.setBeanFactory(this);
+            }
             //如果已经有代理则不会生效
             obj=applyBeanPostProcessorsBeforeInitialization(obj,beanName);
             obj=applyBeanPostProcessorsAfterInitialization(obj,beanName);
@@ -178,6 +181,23 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     }
 
     /**
+     * 根据类型获取所有所属bean
+     * @param type
+     * @return
+     * @param <T>
+     */
+    public <T> List<T> getBeanOfType(Class<T> type){
+        List<T> result = new ArrayList<>();
+        for(String beanName : beanDefinitionNames){
+            BeanDefinition beanDefinition = getBeanDefinition(beanName);
+            if(type.isAssignableFrom(beanDefinition.getBeanType())){
+                result.add(getBean(beanName));
+            }
+        }
+        return result;
+    }
+
+    /**
      * 获取代理
      * @param bean
      * @param beanName
@@ -190,6 +210,10 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
         return bean;
     }
 
+    /**
+     * 将后置处理器加入处理器列表
+     * @param pp
+     */
     public void addBeanPostProcessor(BeanPostProcessor pp){
         beanPostProcessors.add(pp);
     }

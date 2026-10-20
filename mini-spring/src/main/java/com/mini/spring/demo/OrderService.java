@@ -5,19 +5,11 @@ import com.mini.spring.annotation.Component;
 import com.mini.spring.annotation.PostConstruct;
 import com.mini.spring.annotation.Transactional;
 
-@Component
-public class OrderService {
+public interface OrderService {
 
-    @Autowired
-    UserRepository userRepository;
+    public String orderOf(long userId);
 
-    @PostConstruct
-    public void init(){
-        System.out.println("@PostConstruct>>OrderService");
-    }
+    public String cancel(long userId);
 
-    @Transactional
-    public String orderOf(long userId) {
-        return "order of " + userRepository.findName(userId);
-    }
+    public String describe(long userId);
 }

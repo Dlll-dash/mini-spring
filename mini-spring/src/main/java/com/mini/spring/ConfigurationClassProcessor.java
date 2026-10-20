@@ -121,6 +121,12 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
         }
     }
 
+    /**
+     * 递归获取@Import注入的类
+     * @param cls 当前正在查询的类
+     * @param imports 注入类集合
+     * @param visited 访问过的类集合
+     */
     private void collectImports(Class<?> cls,Set<Class<?>>imports,Set<Class<?>> visited){
         if(visited.contains(cls)){
             return;
