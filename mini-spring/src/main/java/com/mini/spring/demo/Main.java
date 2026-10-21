@@ -6,7 +6,7 @@ import com.mini.spring.transaction.EnableTransactionManagement;
 
 import java.util.Arrays;
 
-@EnableTransactionManagement
+@EnableTransactionManagement(order = -1)
 @ComponentScan({"com.mini.spring.exception","com.mini.spring.demo"})
 public class Main {
 

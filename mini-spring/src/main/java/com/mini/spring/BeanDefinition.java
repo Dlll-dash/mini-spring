@@ -6,13 +6,17 @@ public class BeanDefinition {
 
     private Class<?> beanType;
 
-    public BeanDefinition(String beanName) {
-        this.beanName = beanName;
-    }
+    private Object[] constructArgumentValues;
 
     public BeanDefinition(String beanName,Class<?> beanType){
         this.beanName=beanName;
         this.beanType=beanType;
+    }
+
+    public BeanDefinition(String beanName,Class<?> beanType,Object[] args){
+        this.beanName=beanName;
+        this.beanType=beanType;
+        this.constructArgumentValues=args;
     }
 
     public String getBeanName() {
@@ -29,5 +33,9 @@ public class BeanDefinition {
 
     public void setBeanType(Class<?> beanType) {
         this.beanType = beanType;
+    }
+
+    public Object[] getConstructArgumentValues(){
+        return constructArgumentValues;
     }
 }

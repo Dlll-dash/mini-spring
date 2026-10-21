@@ -1,5 +1,6 @@
 package com.mini.spring.transaction;
 
+import com.mini.spring.Ordered;
 import com.mini.spring.annotation.Import;
 
 import java.lang.annotation.ElementType;
@@ -14,6 +15,11 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Import(TransactionConfigurationRegistrar.class)
+@Import(TransactionSelector.class)
 public @interface EnableTransactionManagement {
+
+    /**
+     * 事务 advisor 的顺序，值越小越靠外
+     */
+    int order() default Ordered.LOWEST_PRECEDENCE;
 }

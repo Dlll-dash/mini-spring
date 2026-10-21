@@ -21,7 +21,9 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
      */
     @Override
     public void postProcessBeanFactory(BeanDefinitionRegistry registry) {
+
         for(String name:registry.getBeanDefinitionNames()){
+
             BeanDefinition bd=registry.getBeanDefinition(name);
             ComponentScan componentScan=bd.getBeanType().getAnnotation(ComponentScan.class);
             Set<Class<?>> imports=new LinkedHashSet<>();
@@ -41,24 +43,9 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
             //收集Import导入类
             collectImports(bd.getBeanType(),imports,new HashSet<>());
-            if(imports.size()>0){
-                for(Class<?> cls:imports){
-                    if(ImportBeanDefinitionRegistrar.class.isAssignableFrom(cls)){
-                        try {
-                            ImportBeanDefinitionRegistrar imp = (ImportBeanDefinitionRegistrar) cls.getDeclaredConstructor().newInstance();
-                            imp.registerBeanDefinition(cls,registry);
-                        }catch (NoSuchMethodException e){
-                            throw new RuntimeException(e);
-                        } catch (InvocationTargetException e) {
-                            throw new RuntimeException(e);
-                        } catch (InstantiationException e) {
-                            throw new RuntimeException(e);
-                        } catch (IllegalAccessException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            }
+
+            //处理Import导入类，包括ImportSelector
+            processImports(bd.getBeanType(),imports,new HashSet<>(),registry);
 
         }
 
@@ -150,4 +137,46 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
     }
 
+    /**
+     * 递归处理Import,有selector就把所有选择的类加入容器，继续递归。
+     * @param importClass 导入类，一路传下去就可以
+     * @param importCandidates 候选集合
+     * @param visited 访问过的集合
+     * @param registry 注册容器
+     */
+    private void processImports(Class<?>importClass,Set<Class<?>>importCandidates,Set<Class<?>>visited,BeanDefinitionRegistry registry){
+
+        for(Class<?> candidate:importCandidates){
+
+            if(!visited.add(candidate))continue;
+            try {
+                if(ImportSelector.class.isAssignableFrom(candidate)){
+                    //如果是selector，就把它所带的候选者加入待处理队列中
+                    ImportSelector selector = (ImportSelector) candidate.getDeclaredConstructor().newInstance();
+                    Set<Class<?>>newImports=new LinkedHashSet<>(Arrays.asList(selector.selectImports(importClass)));
+                    //继续递归处理
+                    processImports(importClass,newImports,visited,registry);
+
+                }
+                else if(ImportBeanDefinitionRegistrar.class.isAssignableFrom(candidate)){
+
+                    ImportBeanDefinitionRegistrar imp = (ImportBeanDefinitionRegistrar) candidate.getDeclaredConstructor().newInstance();
+                    //传给 registrar 的是“导入者”，不是 registrar 自己
+                    imp.registerBeanDefinition(importClass,registry);
+                }
+            }catch (NoSuchMethodException e){
+                throw new RuntimeException(e);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e);
+            } catch (InstantiationException e) {
+                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+    }
+
 }
+
+

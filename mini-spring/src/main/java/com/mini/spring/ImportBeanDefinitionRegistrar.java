@@ -1,17 +1,13 @@
 package com.mini.spring;
 
-import java.beans.Introspector;
-
 public interface ImportBeanDefinitionRegistrar {
 
     /**
-     * 将注入的类加入到bean容器中
-     * @param cls
-     * @param registry
+     * 把注入的类加入容器
+     * @param importingClass 发起导入的那个配置类（容器里那个），不是 registrar 自己
+     * @param registry 配方册
      */
-    default void registerBeanDefinition(Class<?>cls,BeanDefinitionRegistry registry){
-        String name= Introspector.decapitalize(cls.getSimpleName());
-        registry.registerBeanDefinition(name,new BeanDefinition(name,cls));
+    default void registerBeanDefinition(Class<?>importingClass,BeanDefinitionRegistry registry){
     }
 
 }

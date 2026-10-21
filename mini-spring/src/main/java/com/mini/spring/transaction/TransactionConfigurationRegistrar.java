@@ -6,12 +6,18 @@ import com.mini.spring.ImportBeanDefinitionRegistrar;
 
 public class TransactionConfigurationRegistrar implements ImportBeanDefinitionRegistrar {
     @Override
-    public void registerBeanDefinition(Class<?> cls, BeanDefinitionRegistry registry) {
+    public void registerBeanDefinition(Class<?> importingClass, BeanDefinitionRegistry registry) {
+        EnableTransactionManagement enable = importingClass.getAnnotation(EnableTransactionManagement.class);
+        if (enable == null) {
+            throw new IllegalStateException(
+                    "@EnableTransactionManagement is not present on importing class " + importingClass.getName());
+        }
+
         String PROXY_CREATOR="autoProxyCreator";
         registry.registerBeanDefinition(PROXY_CREATOR,new BeanDefinition(PROXY_CREATOR,InternalAutoProxyCreator.class));
 
         String ADVISOR="transactionAdvisor";
-        registry.registerBeanDefinition(ADVISOR,new BeanDefinition(ADVISOR,TransactionAdvisor.class));
+        registry.registerBeanDefinition(ADVISOR,new BeanDefinition(ADVISOR,TransactionAdvisor.class,new Object[]{enable.order()}));
 
 
     }

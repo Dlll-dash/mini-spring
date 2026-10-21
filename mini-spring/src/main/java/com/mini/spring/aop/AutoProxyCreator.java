@@ -3,6 +3,7 @@ package com.mini.spring.aop;
 import com.mini.spring.BeanFactoryAware;
 import com.mini.spring.BeanPostProcessor;
 import com.mini.spring.MiniBeanFactory;
+import com.mini.spring.OrderComparator;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -138,6 +139,7 @@ public class AutoProxyCreator implements BeanPostProcessor, BeanFactoryAware {
                 result.add(advisor);
             }
         }
+        result.sort(new OrderComparator());
         return result;
 
     }

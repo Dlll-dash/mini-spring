@@ -1,12 +1,20 @@
 package com.mini.spring.transaction;
 
+import com.mini.spring.Ordered;
 import com.mini.spring.aop.Advisor;
 import com.mini.spring.aop.MethodInterceptor;
 import com.mini.spring.aop.Pointcut;
 
-public class TransactionAdvisor implements Advisor {
+public class TransactionAdvisor implements Advisor, Ordered {
     private Pointcut pointcut;
+
     private MethodInterceptor advice;
+
+    private int order;
+
+    TransactionAdvisor(int order){
+        this.order=order;
+    }
 
     @Override
     public Pointcut getPointcut() {
@@ -22,5 +30,10 @@ public class TransactionAdvisor implements Advisor {
             return this.advice;
         }
         return this.advice=new TransactionInterceptor();
+    }
+
+    @Override
+    public int getOrder() {
+        return order;
     }
 }

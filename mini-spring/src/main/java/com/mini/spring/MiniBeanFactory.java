@@ -5,6 +5,7 @@ import com.mini.spring.exception.BeanAlreadyExistsException;
 import com.mini.spring.exception.NoSuchBeanDefinitionException;
 import com.mini.spring.exception.NoUniqueBeanDefinitionException;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -49,8 +50,35 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     private <T> T createBean(String beanName,Class<T> beanType){
         try {
             //System.out.println(">>>Create Bean: "+beanName);
-
-            T obj = (T)beanType.getDeclaredConstructor().newInstance();
+            BeanDefinition bd=getBeanDefinition(beanName);
+            Object[] args=bd.getConstructArgumentValues();
+            T obj = null;
+            //选择进入有参或无参构造
+            if(args!=null) {
+                IllegalArgumentException last=null;
+                //遍历所有构造器，匹配参数
+                for(Constructor<?> constructor : beanType.getDeclaredConstructors()){
+                    if(constructor.getParameterCount()!=args.length){
+                        continue;
+                    }
+                    constructor.setAccessible(true);
+                    try {
+                        obj = (T)constructor.newInstance(args);
+                        break;
+                    }catch (IllegalArgumentException e){
+                        last=e;
+                    }
+                }
+                //没有匹配的则抛出异常
+                if(obj==null){
+                    throw new RuntimeException(
+                            "Could not resolve matching constructor on bean class ["+beanName+":"+beanType.getSimpleName()+ "]",last
+                    );
+                }
+            }else{
+                //无参构造
+                obj=(T) beanType.getDeclaredConstructor().newInstance();
+            }
             T finalObj = obj;
 
             //lambda 实现ObjectFactory接口，重载getObject方法：返回经过PostProcessors处理过的代理
@@ -98,6 +126,13 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
         }
     }
 
+    /**
+     * 调用后置处理器的初始前方法
+     * @param obj
+     * @param beanName
+     * @return
+     * @param <T>
+     */
     private <T> T applyBeanPostProcessorsBeforeInitialization(T obj, String beanName) {
         for(BeanPostProcessor pp:beanPostProcessors){
             obj =(T)pp.postProcessBeforeInitialization(obj,beanName);
