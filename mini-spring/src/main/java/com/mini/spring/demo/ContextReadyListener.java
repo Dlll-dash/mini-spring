@@ -1,0 +1,15 @@
+package com.mini.spring.demo;
+
+import com.mini.spring.ApplicationEvent;
+import com.mini.spring.ApplicationListener;
+import com.mini.spring.ContextRefreshedEvent;
+import com.mini.spring.annotation.Component;
+
+
+@Component
+public class ContextReadyListener implements ApplicationListener<ContextRefreshedEvent> {
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        System.out.println("[event]："+event.getClass().getSimpleName()+" ,listener@"+System.identityHashCode(this));
+    }
+}

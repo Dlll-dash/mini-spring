@@ -1,12 +1,13 @@
 package com.mini.spring;
 
 import java.beans.Introspector;
-import java.util.*;
 
 
 public class MiniContext {
 
     private final MiniBeanFactory factory = new MiniBeanFactory();
+
+    private ApplicationEventMulticaster applicationEventMulticaster;
 
     /**
      * 初始化容器
@@ -34,20 +35,32 @@ public class MiniContext {
      * 运行方法
      */
     public void refresh(){
-//        obtainFreshBeanFactory();
-//
-//        postProcessBeanFactory();
-//
+
+        //调用BFPP，扫包注册BeanDefinition
         invokeBeanFactoryPostProcessors();
 
-        //注册BPP
+        //注册BPP到 beanDefinitons 中
         registerFrameworkBeanPostProcessor();
+
+        //注册BPP beanDefiniton 到 BPP 队列中
         registerBeanPostProcessors();
 
-//        onRefresh();
-//
+        //初始化多播器
+        initApplicationEventMulticaster();
+
+        //注册监听器
+        registerListeners();
+
+        //onRefresh();
+
+         //完成bean初始化
         finishBeanFactoryInitialization();
+
+        //结束refresh，广播事件
+        finishRefresh();
     }
+
+
 
     /**
      * 调用工厂后置处理器
@@ -76,11 +89,46 @@ public class MiniContext {
         }
     }
 
+
+    /**
+     * 注册多播器
+     */
+    private void initApplicationEventMulticaster() {
+        ApplicationEventMulticaster multicaster=new SimpleApplicationEventMulticaster(factory);
+        this.applicationEventMulticaster=multicaster;
+    }
+
+    /**
+     * 注册监听器到多播器内部容器中，但不要初始化bean
+     */
+    private void registerListeners() {
+        //只获得bean名称，不初始化bean
+        String[] names = factory.getBeanNamesForType(ApplicationListener.class);
+        for(String name:names){
+            applicationEventMulticaster.addApplicationListenerBean(name);
+        }
+    }
+
     private void finishBeanFactoryInitialization() {
         //预实例化
         for(String beanName: factory.getBeanDefinitionNames()){
             factory.getBean(beanName);
         }
+    }
+
+    /**
+     * 结束refresh前广播事件
+     */
+    private void finishRefresh() {
+        publishEvent(new ContextRefreshedEvent(this));
+    }
+
+    /**
+     * 广播事件
+     * @param event
+     */
+    private void publishEvent(ApplicationEvent event){
+        applicationEventMulticaster.multicastEvent(event);
     }
 
     /**

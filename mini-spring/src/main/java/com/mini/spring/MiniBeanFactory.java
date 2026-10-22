@@ -234,6 +234,23 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     }
 
     /**
+     * 根据类型获取名称列表，不会创建bean
+     * @param type
+     * @return
+     */
+    public String[] getBeanNamesForType(Class<?> type){
+        ArrayList<String>result=new ArrayList<>();
+        for(String beanName:beanDefinitionNames){
+            BeanDefinition bd=beanDefinitions.get(beanName);
+            if(type.isAssignableFrom(bd.getBeanType())){
+                result.add(beanName);
+            }
+        }
+        return result.toArray(new String[0]);
+
+    }
+
+    /**
      * 获取代理
      * @param bean
      * @param beanName
@@ -253,5 +270,7 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     public void addBeanPostProcessor(BeanPostProcessor pp){
         beanPostProcessors.add(pp);
     }
+
+
 
 }
