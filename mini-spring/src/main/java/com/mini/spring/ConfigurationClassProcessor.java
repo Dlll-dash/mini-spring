@@ -21,9 +21,10 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
      */
     @Override
     public void postProcessBeanFactory(BeanDefinitionRegistry registry) {
-
-        for(String name:registry.getBeanDefinitionNames()){
-
+        //扫描Import配置类会在运行时新增beanDefinition，需要用下标显式循环
+        for(int i=0;i<registry.getBeanDefinitionNames().length;i++){
+            //getBeanDefinitionNames()每次循环获取最新的快照，不能放在循环外
+            String name=registry.getBeanDefinitionNames()[i];
             BeanDefinition bd=registry.getBeanDefinition(name);
             ComponentScan componentScan=bd.getBeanType().getAnnotation(ComponentScan.class);
             Set<Class<?>> imports=new LinkedHashSet<>();
@@ -157,12 +158,15 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
                     //继续递归处理
                     processImports(importClass,newImports,visited,registry);
 
-                }
-                else if(ImportBeanDefinitionRegistrar.class.isAssignableFrom(candidate)){
+                }else if(ImportBeanDefinitionRegistrar.class.isAssignableFrom(candidate)){
 
                     ImportBeanDefinitionRegistrar imp = (ImportBeanDefinitionRegistrar) candidate.getDeclaredConstructor().newInstance();
                     //传给 registrar 的是“导入者”，不是 registrar 自己
                     imp.registerBeanDefinition(importClass,registry);
+                }else{
+                    String beanName=Introspector.decapitalize(candidate.getSimpleName());
+                    registry.registerBeanDefinition(beanName, new BeanDefinition(beanName, candidate));
+
                 }
             }catch (NoSuchMethodException e){
                 throw new RuntimeException(e);

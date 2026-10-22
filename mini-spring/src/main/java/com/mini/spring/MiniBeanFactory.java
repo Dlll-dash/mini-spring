@@ -29,8 +29,9 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
 
     @Override
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
-        beanDefinitions.put(beanName,beanDefinition);
-        beanDefinitionNames.add(beanName);
+        if(beanDefinitions.put(beanName, beanDefinition)==null) {
+            beanDefinitionNames.add(beanName);
+        }
     }
 
     @Override

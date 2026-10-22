@@ -2,11 +2,12 @@ package com.mini.spring.demo;
 
 import com.mini.spring.MiniContext;
 import com.mini.spring.annotation.ComponentScan;
-import com.mini.spring.transaction.EnableTransactionManagement;
+import com.mini.spring.annotation.Import;
+import com.mini.spring.config.TransactionConfig;
 
 import java.util.Arrays;
 
-@EnableTransactionManagement(order = -1)
+@Import(TransactionConfig.class)
 @ComponentScan({"com.mini.spring.exception","com.mini.spring.demo"})
 public class Main {
 
