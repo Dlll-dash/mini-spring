@@ -8,6 +8,15 @@ public class BeanDefinition {
 
     private Object[] constructArgumentValues;
 
+    private String factoryBeanName;
+
+    private String factoryMethodName;
+
+    public BeanDefinition(String factoryBeanName,String factoryMethodName){
+        this.factoryBeanName=factoryBeanName;
+        this.factoryMethodName=factoryMethodName;
+    }
+
     public BeanDefinition(String beanName,Class<?> beanType){
         this.beanName=beanName;
         this.beanType=beanType;
@@ -37,5 +46,13 @@ public class BeanDefinition {
 
     public Object[] getConstructArgumentValues(){
         return constructArgumentValues;
+    }
+
+    public String getFactoryBeanName() {
+        return factoryBeanName;
+    }
+
+    public String getFactoryMethodName() {
+        return factoryMethodName;
     }
 }

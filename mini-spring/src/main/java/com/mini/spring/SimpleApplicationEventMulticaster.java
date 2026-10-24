@@ -1,5 +1,7 @@
 package com.mini.spring;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -25,9 +27,14 @@ public class SimpleApplicationEventMulticaster implements ApplicationEventMultic
     @Override
     public void multicastEvent(ApplicationEvent event){
 
+        Class<?>eventType=event.getClass();
         for(String name : applicationListenerBeans){
-            ApplicationListener<?> listener=factory.getBean(name);
-            invoke(listener,event);
+            BeanDefinition listener = factory.getBeanDefinition(name);
+            Class<?>listenerType=listener.getBeanType();
+            //先判断一下是否匹配
+            if(supportEvent(listenerType,eventType)) {
+                invoke(factory.getBean(name), event);
+            }
         }
 
     }
@@ -42,4 +49,31 @@ public class SimpleApplicationEventMulticaster implements ApplicationEventMultic
         listener.onApplicationEvent(event);
     }
 
+    private boolean supportEvent(Class<?> listenerType,Class<?> eventType){
+        Type[] genericInterfaces = listenerType.getGenericInterfaces();
+        for(Type type:genericInterfaces){
+            if(!(type instanceof ParameterizedType pt)){
+                //普通接口
+                continue;
+            }
+
+            if(pt.getRawType() != ApplicationListener.class){
+                //不是Listener泛型接口
+                continue;
+            }
+            Type arg=((ParameterizedType) type).getActualTypeArguments()[0];
+            if(!(arg instanceof Class<?> declaredType)){
+                //TypeVariable
+                return true;
+            }
+
+            if (!declaredType.isAssignableFrom(eventType)) {
+                System.out.println("skip " + type.getTypeName() + " for " + eventType.getSimpleName());
+                return false;
+            }
+        }
+        //一个也没找到，也不排除。直接返回true，有问题直接报错 ClassCastException
+        return true;
+
+    }
 }

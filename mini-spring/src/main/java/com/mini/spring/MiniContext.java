@@ -3,7 +3,7 @@ package com.mini.spring;
 import java.beans.Introspector;
 
 
-public class MiniContext {
+public class MiniContext implements ApplicationEventPublisher{
 
     private final MiniBeanFactory factory = new MiniBeanFactory();
 
@@ -127,7 +127,7 @@ public class MiniContext {
      * 广播事件
      * @param event
      */
-    private void publishEvent(ApplicationEvent event){
+    public void publishEvent(ApplicationEvent event){
         applicationEventMulticaster.multicastEvent(event);
     }
 

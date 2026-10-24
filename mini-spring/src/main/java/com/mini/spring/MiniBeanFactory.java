@@ -1,6 +1,7 @@
 package com.mini.spring;
 
 import com.mini.spring.annotation.Autowired;
+import com.mini.spring.annotation.Bean;
 import com.mini.spring.exception.BeanAlreadyExistsException;
 import com.mini.spring.exception.NoSuchBeanDefinitionException;
 import com.mini.spring.exception.NoUniqueBeanDefinitionException;
@@ -8,6 +9,7 @@ import com.mini.spring.exception.NoUniqueBeanDefinitionException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +78,28 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
                             "Could not resolve matching constructor on bean class ["+beanName+":"+beanType.getSimpleName()+ "]",last
                     );
                 }
-            }else{
+            }else if(bd.getFactoryBeanName()!=null){
+                Object factoryBean = getBean(bd.getFactoryBeanName());
+                Method[] methods=factoryBean.getClass().getDeclaredMethods();
+                for(Method method:methods){
+                    if(!isFactoryMethod(method) || !method.getName().equals(beanName)){
+                        continue;
+                    }
+                    Class<?>[] parameterTypes = method.getParameterTypes();
+                    List<Object>parameters=new ArrayList<>();
+                    for(Class<?> cls : parameterTypes){
+                        Object parameter = getBean(cls);
+                        parameters.add(parameter);
+
+                    }
+                    if(parameters.size()!=parameterTypes.length){
+                        continue;
+                    }
+                    method.setAccessible(true);
+                    obj = (T)method.invoke(factoryBean,parameters.toArray());
+                }
+            }
+            else{
                 //无参构造
                 obj=(T) beanType.getDeclaredConstructor().newInstance();
             }
@@ -125,6 +148,10 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
         }catch(InvocationTargetException | NoSuchMethodException | InstantiationException | IllegalAccessException e){
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean isFactoryMethod(Method method) {
+        return method.isAnnotationPresent(Bean.class);
     }
 
     /**

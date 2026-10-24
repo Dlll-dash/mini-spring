@@ -1,5 +1,6 @@
 package com.mini.spring;
 
+import com.mini.spring.annotation.Bean;
 import com.mini.spring.annotation.Component;
 import com.mini.spring.annotation.ComponentScan;
 import com.mini.spring.annotation.Import;
@@ -9,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
@@ -48,6 +50,8 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
             //处理Import导入类，包括ImportSelector
             processImports(bd.getBeanType(),imports,new HashSet<>(),registry);
 
+            //处理@Bean注解导入
+            processBeans(bd,registry);
         }
 
     }
@@ -176,6 +180,29 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
                 throw new RuntimeException(e);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
+            }
+        }
+
+    }
+
+    /**
+     * 处理@Bean注解导入类
+     * @param bd
+     * @param registry
+     */
+    private void processBeans(BeanDefinition bd,BeanDefinitionRegistry registry){
+        Method[] methods=bd.getBeanType().getDeclaredMethods();
+        for(Method method:methods){
+            if(method.isAnnotationPresent(Bean.class)){
+
+                Class<?>beanType=method.getReturnType();
+                String methodName=method.getName();
+                String beanFactoryName=bd.getBeanName();
+
+                BeanDefinition beanDefinition=new BeanDefinition(beanFactoryName,methodName);
+                beanDefinition.setBeanName(methodName);
+                beanDefinition.setBeanType(beanType);
+                registry.registerBeanDefinition(methodName,beanDefinition);
             }
         }
 

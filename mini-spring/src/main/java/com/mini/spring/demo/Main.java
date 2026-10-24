@@ -33,5 +33,10 @@ public class Main {
         System.out.println("---⑤：没有 @Transactional 的方法---");
         System.out.println(ctx.getBean(OrderService.class).describe(7));
 
+        System.out.println("---⑥：发布事件---");
+        ctx.publishEvent(new OrderPlacedEvent(ctx.getBean(OrderService.class)));
+
+        System.out.println("builder=[" + ctx.getBean("builder") + "] greeting=[" + ctx.getBean("greeting") + "]");
+
     }
 }
