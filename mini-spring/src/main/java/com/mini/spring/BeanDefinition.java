@@ -28,6 +28,8 @@ public class BeanDefinition {
         this.constructArgumentValues=args;
     }
 
+    public BeanDefinition() {}
+
     public String getBeanName() {
         return beanName;
     }
@@ -52,7 +54,13 @@ public class BeanDefinition {
         return factoryBeanName;
     }
 
+    public void setFactoryBeanName(String factoryBeanName){
+        this.factoryBeanName=factoryBeanName;
+    }
+
     public String getFactoryMethodName() {
         return factoryMethodName;
     }
+
+    public void setFactoryMethodName(String factoryMethodName){this.factoryMethodName=factoryMethodName;}
 }

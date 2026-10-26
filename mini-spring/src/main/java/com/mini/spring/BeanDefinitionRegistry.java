@@ -22,4 +22,5 @@ public interface BeanDefinitionRegistry {
      */
     String[] getBeanDefinitionNames();
 
+    boolean contains(Class<?> type);
 }

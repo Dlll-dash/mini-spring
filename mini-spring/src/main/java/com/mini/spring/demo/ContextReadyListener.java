@@ -1,6 +1,5 @@
 package com.mini.spring.demo;
 
-import com.mini.spring.ApplicationEvent;
 import com.mini.spring.ApplicationListener;
 import com.mini.spring.ContextRefreshedEvent;
 import com.mini.spring.annotation.Component;

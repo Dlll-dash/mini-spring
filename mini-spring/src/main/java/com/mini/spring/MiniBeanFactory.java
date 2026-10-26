@@ -298,6 +298,19 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
         beanPostProcessors.add(pp);
     }
 
-
-
+    /**
+     * 根据类型判断容器中是否已存在bean
+     * @param type
+     * @return
+     */
+    @Override
+    public boolean contains(Class<?> type) {
+        for(String name:beanDefinitionNames){
+            BeanDefinition bd=getBeanDefinition(name);
+            if(type.isAssignableFrom(bd.getBeanType())){
+                return true;
+            }
+        }
+        return false;
+    }
 }

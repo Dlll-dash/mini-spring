@@ -1,9 +1,6 @@
 package com.mini.spring;
 
-import com.mini.spring.annotation.Bean;
-import com.mini.spring.annotation.Component;
-import com.mini.spring.annotation.ComponentScan;
-import com.mini.spring.annotation.Import;
+import com.mini.spring.annotation.*;
 
 import java.beans.Introspector;
 import java.io.File;
@@ -52,6 +49,8 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
             //处理@Bean注解导入
             processBeans(bd,registry);
+
+
         }
 
     }
@@ -105,6 +104,9 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
                 //目前只是mini版，没有依赖，扫描时加载不会导致崩掉
                 Class<?> c=Class.forName(className);
                 if(c.isAnnotationPresent(Component.class)){
+                    if(c.isAnnotationPresent(Conditional.class)&&shouldSkip(c.getAnnotation(Conditional.class),c,registry)){
+                        continue;
+                    }
                     //注册(暂时)
                     String beanName= Introspector.decapitalize(f.getName().replace(".class",""));
                     registry.registerBeanDefinition(beanName,new BeanDefinition(beanName,c));
@@ -170,7 +172,6 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
                 }else{
                     String beanName=Introspector.decapitalize(candidate.getSimpleName());
                     registry.registerBeanDefinition(beanName, new BeanDefinition(beanName, candidate));
-
                 }
             }catch (NoSuchMethodException e){
                 throw new RuntimeException(e);
@@ -191,23 +192,71 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
      * @param registry
      */
     private void processBeans(BeanDefinition bd,BeanDefinitionRegistry registry){
+        Conditional annotation = bd.getBeanType().getAnnotation(Conditional.class);
+        //对于类上的条件注解判断
+        if(annotation!=null&&shouldSkip(annotation,bd.getBeanType(),registry)){
+            return;
+        }
         Method[] methods=bd.getBeanType().getDeclaredMethods();
         for(Method method:methods){
             if(method.isAnnotationPresent(Bean.class)){
-
-                Class<?>beanType=method.getReturnType();
-                String methodName=method.getName();
-                String beanFactoryName=bd.getBeanName();
-
-                BeanDefinition beanDefinition=new BeanDefinition(beanFactoryName,methodName);
-                beanDefinition.setBeanName(methodName);
-                beanDefinition.setBeanType(beanType);
-                registry.registerBeanDefinition(methodName,beanDefinition);
+                //对于方法上的条件注解判断
+                Conditional conditional = method.getAnnotation(Conditional.class);
+                if(conditional!=null&&shouldSkip(conditional,bd.getBeanType(),registry)){
+                    continue;
+                }
+                registerMethodBean(method,bd,registry);
             }
         }
 
     }
 
+    /**
+     * 注册@Bean类 方法声明的Bean
+     * @param beanMethod @Bean类中的方法
+     * @param beanFactory @Bean类，让注册类指向生产工厂bean
+     * @param registry 注册表
+     */
+    private void registerMethodBean(Method beanMethod,BeanDefinition beanFactory,BeanDefinitionRegistry registry){
+        Class<?>beanType=beanMethod.getReturnType();
+        String methodName=beanMethod.getName();
+        String beanFactoryName=beanFactory.getBeanName();
+
+        BeanDefinition beanDefinition=new BeanDefinition();
+        //表明来自哪个工厂类
+        beanDefinition.setFactoryBeanName(beanFactoryName);
+        //表明来自哪个方法
+        beanDefinition.setFactoryMethodName(methodName);
+        //方法名即为bean名称
+        beanDefinition.setBeanName(methodName);
+        beanDefinition.setBeanType(beanType);
+
+        registry.registerBeanDefinition(methodName,beanDefinition);
+    }
+
+    /**
+     * 判断@Condition条件是否满足
+     * @param type Bean类型
+     * @param registry
+     * @return
+     */
+    private boolean shouldSkip(Conditional conditional, Class<?> type,BeanDefinitionRegistry registry){
+
+        if(conditional == null) {
+            return true;
+        }
+        Class<? extends Condition>[] classes = conditional.value();
+        for (Class<? extends Condition> cls : classes) {
+            try {
+                Condition condition = cls.getDeclaredConstructor().newInstance();
+                if (!condition.matches(type, registry)) return true;
+            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
+                     InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return false;
+    }
 }
 
 
