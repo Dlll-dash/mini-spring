@@ -38,5 +38,6 @@ public class Main {
 
         System.out.println("builder=[" + ctx.getBean("builder") + "] greeting=[" + ctx.getBean("greeting") + "]");
 
+        System.out.println(ctx.getBean(Greeter.class).greet());
     }
 }

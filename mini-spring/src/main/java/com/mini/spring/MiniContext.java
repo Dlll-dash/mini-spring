@@ -9,6 +9,8 @@ public class MiniContext implements ApplicationEventPublisher{
 
     private ApplicationEventMulticaster applicationEventMulticaster;
 
+    private final StandardEnvironment environment = new StandardEnvironment();
+
     /**
      * 初始化容器
      * @param configClass 运行主类
@@ -110,6 +112,8 @@ public class MiniContext implements ApplicationEventPublisher{
     }
 
     private void finishBeanFactoryInitialization() {
+        //注册环境
+        factory.addEmbeddedValueResolver(environment::resolvePlaceholders);
         //预实例化
         for(String beanName: factory.getBeanDefinitionNames()){
             factory.getBean(beanName);

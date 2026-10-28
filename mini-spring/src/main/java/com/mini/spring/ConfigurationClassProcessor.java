@@ -6,6 +6,7 @@ import java.beans.Introspector;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
@@ -202,7 +203,7 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
             if(method.isAnnotationPresent(Bean.class)){
                 //对于方法上的条件注解判断
                 Conditional conditional = method.getAnnotation(Conditional.class);
-                if(conditional!=null&&shouldSkip(conditional,bd.getBeanType(),registry)){
+                if(conditional!=null&&shouldSkip(conditional,method,registry)){
                     continue;
                 }
                 registerMethodBean(method,bd,registry);
@@ -236,20 +237,16 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
     /**
      * 判断@Condition条件是否满足
-     * @param type Bean类型
+     * @param source 来源（方法/类）
      * @param registry
      * @return
      */
-    private boolean shouldSkip(Conditional conditional, Class<?> type,BeanDefinitionRegistry registry){
-
-        if(conditional == null) {
-            return true;
-        }
+    private boolean shouldSkip(Conditional conditional, AnnotatedElement source, BeanDefinitionRegistry registry){
         Class<? extends Condition>[] classes = conditional.value();
         for (Class<? extends Condition> cls : classes) {
             try {
                 Condition condition = cls.getDeclaredConstructor().newInstance();
-                if (!condition.matches(type, registry)) return true;
+                if (!condition.matches(source, registry)) return true;
             } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
                      InvocationTargetException e) {
                 throw new RuntimeException(e);

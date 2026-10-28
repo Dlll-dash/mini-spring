@@ -22,5 +22,10 @@ public interface BeanDefinitionRegistry {
      */
     String[] getBeanDefinitionNames();
 
+    /**
+     * 判断bean是否已存在
+     * @param type
+     * @return
+     */
     boolean contains(Class<?> type);
 }

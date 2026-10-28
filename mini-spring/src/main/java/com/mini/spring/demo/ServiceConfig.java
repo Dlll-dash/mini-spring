@@ -1,5 +1,6 @@
 package com.mini.spring.demo;
 
+import com.mini.spring.OnMissingBeanCondition;
 import com.mini.spring.annotation.Bean;
 import com.mini.spring.annotation.Component;
 import com.mini.spring.annotation.Conditional;
@@ -16,5 +17,11 @@ public class ServiceConfig {
     @Conditional(HasOrderServiceCondition.class)
     public String greeting(OrderService orderService){
         return "hello from " + orderService.getClass().getSimpleName();
+    }
+
+    @Bean
+    @Conditional(OnMissingBeanCondition.class)
+    public Greeter fallbackGreeter(){
+        return ()->{return "hello from @Bean fallback";};
     }
 }

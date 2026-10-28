@@ -2,6 +2,7 @@ package com.mini.spring;
 
 import com.mini.spring.annotation.Autowired;
 import com.mini.spring.annotation.Bean;
+import com.mini.spring.annotation.Value;
 import com.mini.spring.exception.BeanAlreadyExistsException;
 import com.mini.spring.exception.NoSuchBeanDefinitionException;
 import com.mini.spring.exception.NoUniqueBeanDefinitionException;
@@ -29,6 +30,8 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
 
     private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<>(16);
 
+    private final List<StringValueResolver> embeddedValueResolvers = new ArrayList<>(4);
+
     @Override
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
         if(beanDefinitions.put(beanName, beanDefinition)==null) {
@@ -42,6 +45,17 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
     }
 
     public String[] getBeanDefinitionNames(){return beanDefinitionNames.toArray(new String[0]);}
+
+    public void addEmbeddedValueResolver(StringValueResolver resolver){
+        embeddedValueResolvers.add(resolver);
+    }
+
+    public String resolveEmbeddedValue(String value){
+        for(StringValueResolver resolver:embeddedValueResolvers){
+            value=resolver.resolvePlaceholders(value);
+        }
+        return value;
+    }
 
     /**
      * 创建bean
@@ -79,23 +93,27 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
                     );
                 }
             }else if(bd.getFactoryBeanName()!=null){
+                //是@Bean方法构造的bean
                 Object factoryBean = getBean(bd.getFactoryBeanName());
                 Method[] methods=factoryBean.getClass().getDeclaredMethods();
                 for(Method method:methods){
                     if(!isFactoryMethod(method) || !method.getName().equals(beanName)){
                         continue;
                     }
+                    //获得Bean方法的形参类型列表
                     Class<?>[] parameterTypes = method.getParameterTypes();
                     List<Object>parameters=new ArrayList<>();
                     for(Class<?> cls : parameterTypes){
+                        //从容器中获取属性注入
                         Object parameter = getBean(cls);
                         parameters.add(parameter);
-
                     }
                     if(parameters.size()!=parameterTypes.length){
+                        //如果参数数量与Bean方法参数数量不同的话就跳过
                         continue;
                     }
                     method.setAccessible(true);
+                    //注入
                     obj = (T)method.invoke(factoryBean,parameters.toArray());
                 }
             }
@@ -110,7 +128,7 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
 
             for(Field f: beanType.getDeclaredFields()){
                 //拿到被@Autowired注解的属性列表
-                if(f.getAnnotation(Autowired.class)!=null){
+                if(f.isAnnotationPresent(Autowired.class)){
                     f.setAccessible(true);
                     try {
                         //递归注入
@@ -118,6 +136,12 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
                     }catch (IllegalAccessException e){
                         throw new RuntimeException(e);
                     }
+                }else if(f.isAnnotationPresent(Value.class)){
+                    Value annotation = f.getAnnotation(Value.class);
+                    f.setAccessible(true);
+                    String value = resolveEmbeddedValue(annotation.value());
+                    Object object = convertIfNecessary(value,f.getType());
+                    f.set(obj,object);
                 }
             }
             //注入完成通知aware
@@ -277,6 +301,17 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
 
     }
 
+
+    /**
+     * 根据类型判断容器中是否已存在bean
+     * @param type
+     * @return
+     */
+    @Override
+    public boolean contains(Class<?> type) {
+        return getBeanNamesForType(type).length>0;
+    }
+
     /**
      * 获取代理
      * @param bean
@@ -298,19 +333,16 @@ public class MiniBeanFactory implements BeanDefinitionRegistry{
         beanPostProcessors.add(pp);
     }
 
-    /**
-     * 根据类型判断容器中是否已存在bean
-     * @param type
-     * @return
-     */
-    @Override
-    public boolean contains(Class<?> type) {
-        for(String name:beanDefinitionNames){
-            BeanDefinition bd=getBeanDefinition(name);
-            if(type.isAssignableFrom(bd.getBeanType())){
-                return true;
-            }
+    private Object convertIfNecessary(String value,Class<?> requiredType){
+        if(requiredType==String.class){
+            return value;
         }
-        return false;
+        if(!requiredType.isPrimitive()&&value.isEmpty()){
+            return null;
+        }
+        if(requiredType==Integer.class||requiredType==int.class){
+            return Integer.parseInt(value);
+        }
+        throw new IllegalStateException("unsupported type: "+requiredType.getName());
     }
 }

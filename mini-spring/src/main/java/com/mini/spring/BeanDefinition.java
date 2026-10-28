@@ -12,11 +12,6 @@ public class BeanDefinition {
 
     private String factoryMethodName;
 
-    public BeanDefinition(String factoryBeanName,String factoryMethodName){
-        this.factoryBeanName=factoryBeanName;
-        this.factoryMethodName=factoryMethodName;
-    }
-
     public BeanDefinition(String beanName,Class<?> beanType){
         this.beanName=beanName;
         this.beanType=beanType;
