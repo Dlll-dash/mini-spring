@@ -15,6 +15,8 @@ import java.util.*;
 
 public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
+    private final List<DeferredImportSelectorHolder>deferredImportSelectors = new ArrayList<>();
+
     /**
      * 扫包，初始化BeanFactory
      * @param registry
@@ -51,7 +53,17 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
             //处理@Bean注解导入
             processBeans(bd,registry);
 
-
+            if(i == registry.getBeanDefinitionNames().length-1 && !deferredImportSelectors.isEmpty()){
+                //最后处理deferred,
+                for(DeferredImportSelectorHolder holder : deferredImportSelectors){
+                    DeferredImportSelector importSelector = holder.getImportSelector();
+                    Class<?>[] classes = importSelector.selectImports(holder.getConfigClass());
+                    //再次处理
+                    processImports(holder.getConfigClass(),new LinkedHashSet<>(Arrays.asList(classes)),new HashSet<>(),registry);
+                }
+                //处理完清空列表
+                deferredImportSelectors.clear();
+            }
         }
 
     }
@@ -156,10 +168,21 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
 
         for(Class<?> candidate:importCandidates){
 
-            if(!visited.add(candidate))continue;
+            if(!visited.add(candidate)){
+                //已经处理过的候选类就跳过
+                continue;
+            }
             try {
-                if(ImportSelector.class.isAssignableFrom(candidate)){
-                    //如果是selector，就把它所带的候选者加入待处理队列中
+                if(DeferredImportSelector.class.isAssignableFrom(candidate)){
+                    //如果是延迟selector
+                    //实例化选择器
+                    DeferredImportSelector selector = (DeferredImportSelector) candidate.getDeclaredConstructor().newInstance();
+                    //加入deferred集合，最后处理
+                    DeferredImportSelectorHolder holder = new DeferredImportSelectorHolder(importClass,selector);
+                    deferredImportSelectors.add(holder);
+                }
+                else if(ImportSelector.class.isAssignableFrom(candidate)){
+                    //如果是普通selector，就当场把它所带的候选者加入待处理队列中
                     ImportSelector selector = (ImportSelector) candidate.getDeclaredConstructor().newInstance();
                     Set<Class<?>>newImports=new LinkedHashSet<>(Arrays.asList(selector.selectImports(importClass)));
                     //继续递归处理
@@ -254,6 +277,30 @@ public class ConfigurationClassProcessor implements BeanFactoryPostProcessor{
         }
         return false;
     }
+
+    /**
+     * 内部类，存储配置类和选择器对。
+     */
+    private class DeferredImportSelectorHolder{
+
+        private Class<?> configClass;
+
+        private DeferredImportSelector importSelector;
+
+        DeferredImportSelectorHolder(Class<?> configClass,DeferredImportSelector importSelector){
+            this.configClass=configClass;
+            this.importSelector=importSelector;
+        }
+
+        public Class<?> getConfigClass(){
+            return configClass;
+        }
+
+        public DeferredImportSelector getImportSelector(){
+            return importSelector;
+        }
+    }
+
 }
 
 

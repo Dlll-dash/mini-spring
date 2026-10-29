@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.mini</groupId>
+  <artifactId>mini-spring-boot-parent</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+
+  <!--
+    聚合 pom：把两个模块列在一起。
+
+    两个子模块没有 <parent>，所以它们各自保留自己的 groupId / version，
+    这里只负责让构建工具和 IDE 知道"它们是一个工程里的两个模块"。
+  -->
+  <modules>
+    <module>mini-spring</module>
+    <module>mini-spring-boot</module>
+  </modules>
+
+</project>

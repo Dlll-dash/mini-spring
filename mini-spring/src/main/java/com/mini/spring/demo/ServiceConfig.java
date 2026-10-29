@@ -4,7 +4,9 @@ import com.mini.spring.OnMissingBeanCondition;
 import com.mini.spring.annotation.Bean;
 import com.mini.spring.annotation.Component;
 import com.mini.spring.annotation.Conditional;
+import com.mini.spring.annotation.Import;
 
+@Import(DemoSelector.class)
 @Component
 public class ServiceConfig {
     @Bean
