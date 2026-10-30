@@ -13,6 +13,7 @@ public class Main {
 
     public static void main(String[] args) {
         var ctx = new MiniContext(Main.class);
+        ctx.refresh();
 
         System.out.println("---①：配方名单---");
         System.out.println(Arrays.toString(ctx.getBeanDefinitionNames()));

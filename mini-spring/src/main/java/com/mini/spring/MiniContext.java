@@ -20,8 +20,14 @@ public class MiniContext implements ApplicationEventPublisher{
         register(configClass);
         //注册框架工厂后置处理器
         registerFrameworkBeanFactoryPostProcessor();
+    }
 
-        refresh();
+    /**
+     * 获取beanFactory
+     * @return
+     */
+    protected MiniBeanFactory getFactory(){
+        return this.factory;
     }
 
     /**
@@ -50,10 +56,11 @@ public class MiniContext implements ApplicationEventPublisher{
         //初始化多播器
         initApplicationEventMulticaster();
 
+        //提供给子类初始化其他特定bean的hook
+        onRefresh();
+
         //注册监听器
         registerListeners();
-
-        //onRefresh();
 
          //完成bean初始化
         finishBeanFactoryInitialization();
@@ -61,8 +68,6 @@ public class MiniContext implements ApplicationEventPublisher{
         //结束refresh，广播事件
         finishRefresh();
     }
-
-
 
     /**
      * 调用工厂后置处理器
@@ -100,6 +105,11 @@ public class MiniContext implements ApplicationEventPublisher{
         this.applicationEventMulticaster=multicaster;
     }
 
+    protected void onRefresh() {
+        //提供给子类覆写的入口，创建其他特定bean
+    }
+
+
     /**
      * 注册监听器到多播器内部容器中，但不要初始化bean
      */
@@ -121,10 +131,35 @@ public class MiniContext implements ApplicationEventPublisher{
     }
 
     /**
-     * 结束refresh前广播事件
+     * 开启生命周期。广播事件
      */
-    private void finishRefresh() {
+    protected void finishRefresh() {
+        startLifeCycleBeans();
+
         publishEvent(new ContextRefreshedEvent(this));
+    }
+
+    private void startLifeCycleBeans() {
+
+        for(String beanName : getFactory().getBeanNamesForType(Lifecycle.class)){
+            Lifecycle bean = getBean(beanName);
+            bean.start();
+        }
+    }
+
+    /**
+     * 暂时为手动关闭
+     */
+    public void close(){
+        publishEvent(new ContextClosedEvent(this));
+        stopLifeCycleBeans();
+    }
+
+    private void stopLifeCycleBeans(){
+        for(String beanName : getFactory().getBeanNamesForType(Lifecycle.class)){
+            Lifecycle bean = getBean(beanName);
+            bean.stop();
+        }
     }
 
     /**
